@@ -9,7 +9,7 @@ from google.genai import types
 app = Flask(__name__)
 logging.basicConfig(level=logging.INFO)
 
-# Primary model aur fallback model
+# Gemini models
 MODELS = [
     "gemini-3.8-flash",
     "gemini-2.5-flash"
@@ -56,9 +56,10 @@ def chat():
                         contents=message.strip(),
                         config=types.GenerateContentConfig(
                             system_instruction=(
-                                "You are JARVIS, a friendly AI voice "
-                                "assistant. Reply naturally in Hindi "
-                                "or Hinglish. Be helpful and concise."
+                                "You are JARVIS, a friendly AI "
+                                "voice assistant. Reply naturally "
+                                "in Hindi or Hinglish. "
+                                "Be helpful and concise."
                             )
                         )
                     )
@@ -70,11 +71,10 @@ def chat():
                             "reply": reply.strip()
                         }), 200
 
-                    last_error = "Gemini returned an empty response"
+                    last_error = "Empty response from Gemini"
 
                 except Exception as e:
                     last_error = e
-
                     app.logger.exception(
                         "Model %s failed: %s",
                         model_name, type(e).__name__
@@ -82,7 +82,7 @@ def chat():
 
                     error_text = str(e).upper()
 
-                    if attempt == 0 and any(
+                    temporary_error = any(
                         code in error_text
                         for code in (
                             "503",
@@ -90,14 +90,16 @@ def chat():
                             "429",
                             "RESOURCE_EXHAUSTED"
                         )
-                    ):
-                        time.sleep(2)
+                    )
+
+                    if attempt == 0 and temporary_error:
+                        time.sleep(3)
                         continue
 
                     break
 
         app.logger.error(
-            "All Gemini models failed: %s",
+            "All models failed: %s",
             str(last_error)[:300]
         )
 
