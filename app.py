@@ -5,15 +5,14 @@ import time
 from flask import Flask, request, jsonify
 from google import genai
 from google.genai import types
-from google.genai import errors
 
 app = Flask(__name__)
 logging.basicConfig(level=logging.INFO)
 
-# Primary aur fallback models
+# Primary model aur fallback model
 MODELS = [
-    "gemini-2.5-flash",
-    "gemini-2.0-flash"
+    "gemini-3.8-flash",
+    "gemini-2.5-flash"
 ]
 
 
@@ -75,17 +74,22 @@ def chat():
 
                 except Exception as e:
                     last_error = e
+
                     app.logger.exception(
                         "Model %s failed: %s",
                         model_name, type(e).__name__
                     )
 
-                    # Sirf temporary service errors par retry
-                    if attempt == 0 and (
-                        "503" in str(e)
-                        or "UNAVAILABLE" in str(e).upper()
-                        or "429" in str(e)
-                        or "RESOURCE_EXHAUSTED" in str(e).upper()
+                    error_text = str(e).upper()
+
+                    if attempt == 0 and any(
+                        code in error_text
+                        for code in (
+                            "503",
+                            "UNAVAILABLE",
+                            "429",
+                            "RESOURCE_EXHAUSTED"
+                        )
                     ):
                         time.sleep(2)
                         continue
@@ -93,7 +97,7 @@ def chat():
                     break
 
         app.logger.error(
-            "All Gemini models failed. Last error: %s",
+            "All Gemini models failed: %s",
             str(last_error)[:300]
         )
 
